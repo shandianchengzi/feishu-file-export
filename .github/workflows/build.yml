@@ -1,0 +1,65 @@
+name: Build and optionally publish
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: feishu-export-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # Public repositories get free standard runners. Private runners only run
+    # after the owner explicitly opts into their account's free-quota conditions.
+    if: ${{ github.event.repository.private == false || vars.ALLOW_PRIVATE_ACTIONS == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: '24'
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: feishu-file-export-dist
+          path: dist/
+          retention-days: 3
+          if-no-files-found: error
+      - name: Prepare project Pages artifact
+        if: ${{ vars.PAGES_MODE == 'project' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: dist/
+          retention-days: 1
+      - name: Publish into the existing user-site repository
+        if: ${{ vars.PAGES_MODE == 'user-site' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        env:
+          PAGES_DEPLOY_TOKEN: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: python3 scripts/publish_user_site.py
+
+  deploy-project-pages:
+    if: ${{ vars.PAGES_MODE == 'project' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v6.0.0
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5.0.1
