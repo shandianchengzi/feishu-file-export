@@ -35,7 +35,7 @@ jobs:
           retention-days: 3
           if-no-files-found: error
       - name: Prepare project Pages artifact
-        if: ${{ vars.PAGES_MODE == 'project' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        if: ${{ (vars.PAGES_MODE == '' || vars.PAGES_MODE == 'project') && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
         uses: actions/upload-pages-artifact@v5.0.0
         with:
           path: dist/
@@ -48,7 +48,7 @@ jobs:
         run: python3 scripts/publish_user_site.py
 
   deploy-project-pages:
-    if: ${{ vars.PAGES_MODE == 'project' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+    if: ${{ (vars.PAGES_MODE == '' || vars.PAGES_MODE == 'project') && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
