@@ -5,10 +5,11 @@
 ## 当前状态
 
 - 功能、锁定版本的依赖、测试和构建工作流已准备。
-- 本地测试与生产构建通过。
+- 本地及 GitHub Actions 的 13 项测试、TypeScript 检查、生产构建均通过，编译产物已上传。
 - **尚未在真实飞书表格中完成下载验收，尚未宣布线上可用。** SDK 授权、租户策略、附件下载权限、临时链接 CORS 和用户网络可达性需要真实环境验收。
-- 仓库当前为 private。为遵守“免费”的要求，默认跳过私有仓库的 Actions runner；公开仓库后标准 runner 自动启用。也可以由账号所有者自行设置 `ALLOW_PRIVATE_ACTIONS=true`，接受其现有免费额度及套餐条件。
-- 尚未设置发布目标。`PAGES_MODE` 未设置时仅编译，不发布。不会自动改变任何仓库的可见性。
+- 仓库已由所有者设置为 public，使用免费的标准 GitHub-hosted runner。私有分支条件仅为未来复用保留：私有仓库默认不启动 runner，除非所有者自行设置 `ALLOW_PRIVATE_ACTIONS=true`。
+- 默认发布到本仓库的项目 Pages，无需设置 `PAGES_MODE` 或任何跨仓库凭据。首次部署停在 `actions/configure-pages`，原因是仓库尚未启用 Pages。请在 [Settings → Pages](https://github.com/shandianchengzi/feishu-file-export/settings/pages) 的 Build and deployment → Source 选择 **GitHub Actions**，然后重新运行失败的部署任务。
+- [已完成编译的 Actions 记录](https://github.com/shandianchengzi/feishu-file-export/actions/runs/34690208464)：`build` 成功，`deploy-project-pages` 等待完成上述一次性设置后重跑。
 
 ## 功能
 
@@ -58,9 +59,11 @@ npm run dev
 
 1. 由仓库所有者确认并将 **这个新插件仓库** 设置为 public。不要为了本插件公开整个已有博客仓库。
 2. 在这个仓库的 Settings → Pages 中，将 Source 设为 GitHub Actions。
-3. 在 Settings → Secrets and variables → Actions → Variables 新增 `PAGES_MODE=project`。
+3. 默认已选择项目 Pages，**无需新增变量或 Secret**。可选设置 `PAGES_MODE=project` 显式指定，`PAGES_MODE=build-only` 可只编译不发布。
 4. 运行 Actions → Build and optionally publish → Run workflow，或向 `main` 提交改动。
 5. 等待 build 和 deploy-project-pages 均成功，再将 workflow 输出的真实地址填入飞书插件入口。
+
+首次启用 Pages 需要仓库管理权限；工作流自带的 `GITHUB_TOKEN` 不能自动完成此设置。普通部署在启用后使用内置令牌即可，不需要个人访问令牌。依据 [configure-pages 官方说明](https://github.com/actions/configure-pages/blob/main/action.yml)。
 
 GitHub Free 支持公开仓库的 Pages，公开仓库的标准 GitHub-hosted runner 免费。使用普通 `ubuntu-latest`，不使用收费 larger runners。仍应遵守 GitHub 的带宽、站点大小和合理使用限制。
 
