@@ -4,12 +4,13 @@
 
 ## 当前状态
 
-- 功能、锁定版本的依赖、测试和构建工作流已准备。
+- 已部署到 [正式插件地址](https://shandianchengzi.github.io/feishu-file-export/)，可填写到飞书边栏插件的托管地址中。插件名称可填写“附件批量导出”。
 - 本地及 GitHub Actions 的 13 项测试、TypeScript 检查、生产构建均通过，编译产物已上传。
-- **尚未在真实飞书表格中完成下载验收，尚未宣布线上可用。** SDK 授权、租户策略、附件下载权限、临时链接 CORS 和用户网络可达性需要真实环境验收。
+- 已在浏览器确认正式页面可打开；[示例模式](https://shandianchengzi.github.io/feishu-file-export/?demo=1) 的四个附件预览、按姓名命名、按学院分类、重名处理及 ZIP 生成通过。自动化浏览器未捕获到保存事件，文件保存尚待人工确认。
+- **尚未在真实飞书表格中完成下载验收。** SDK 授权、租户策略、附件下载权限、临时链接 CORS 和用户网络可达性需要真实环境验收。
 - 仓库已由所有者设置为 public，使用免费的标准 GitHub-hosted runner。私有分支条件仅为未来复用保留：私有仓库默认不启动 runner，除非所有者自行设置 `ALLOW_PRIVATE_ACTIONS=true`。
-- 默认发布到本仓库的项目 Pages，无需设置 `PAGES_MODE` 或任何跨仓库凭据。首次部署停在 `actions/configure-pages`，原因是仓库尚未启用 Pages。请在 [Settings → Pages](https://github.com/shandianchengzi/feishu-file-export/settings/pages) 的 Build and deployment → Source 选择 **GitHub Actions**，然后重新运行失败的部署任务。
-- [已完成编译的 Actions 记录](https://github.com/shandianchengzi/feishu-file-export/actions/runs/34690208464)：`build` 成功，`deploy-project-pages` 等待完成上述一次性设置后重跑。
+- 已启用本仓库的项目 Pages，Source 为 GitHub Actions；无需设置 `PAGES_MODE` 或任何跨仓库凭据。后续向 `main` 提交代码会自动测试、构建并发布。
+- [成功部署的 Actions 记录](https://github.com/shandianchengzi/feishu-file-export/actions/runs/34690208464)：`build` 和 `deploy-project-pages` 均成功，部署输出确认正式地址为 `https://shandianchengzi.github.io/feishu-file-export/`。
 
 ## 功能
 
@@ -86,7 +87,7 @@ GitHub Free 支持公开仓库的 Pages，公开仓库的标准 GitHub-hosted ru
 ## 飞书内安装与验收
 
 1. 确认 HTTPS 页面实际能打开；独立页面应显示安装说明，`?demo=1` 应能下载一个包含四个测试附件的 ZIP。
-2. 打开目标多维表格，在边栏插件的自定义／开发插件入口添加真实部署地址。具体入口、是否允许自定义插件及授权要求，以当前飞书界面和官方开发指南为准。个人自用不等同于插件市场上架。
+2. 打开目标多维表格，在边栏插件的自定义／开发插件入口填写插件名称“附件批量导出”，托管地址填写 `https://shandianchengzi.github.io/feishu-file-export/`。具体入口、是否允许自定义插件及授权要求，以当前飞书界面和官方开发指南为准。个人自用不等同于插件市场上架。
 3. 使用有下载权限的账号，先选择一条有小附件的记录，检查原附件可手动下载，再在插件中预览和导出。
 4. 验证附件原始字节、扩展名、同一行的命名和分类，以及一个单元格多个附件、重名和空值的情况。
 5. 验证一个筛选视图、一组手选记录及超过 200 条的表格；确保清单数量和原表所选范围一致。
