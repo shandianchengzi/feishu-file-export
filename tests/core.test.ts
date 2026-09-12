@@ -4,9 +4,9 @@ import { collectPages, createPlan, partition, safeSegment } from '../src/core.ts
 import type { Row } from '../src/types.ts';
 
 function row(id: string, name: string, group: string, names = ['申请.txt']): Row {
-  return { id, name, group, cells: [{ fieldId: 'f', fieldName: '附件', attachments: names.map((name, i) => ({ name, token: id + i, size: 10, type: 'text/plain' })) }] };
+  return { id, nameValues: { name, group }, group, cells: [{ fieldId: 'f', fieldName: '附件', attachments: names.map((name, i) => ({ name, token: id + i, size: 10, type: 'text/plain' })) }] };
 }
-const options = { nameFieldId: 'name', groupFieldId: 'group', naming: 'replace' as const };
+const options = { nameFieldIds: ['name'], nameSeparator: '_', groupFieldId: 'group', naming: 'replace' as const };
 test('same-row naming, multiple attachments, duplicate names and original extensions', () => {
   const plan = createPlan([row('r1','张三','学院',['a.txt','b.txt']), row('r2','张三','学院',['c.txt','d.pdf'])], options);
   assert.deepEqual(plan.map(x => x.path), ['学院/张三.txt','学院/张三 (2).txt','学院/张三 (3).txt','学院/张三.pdf']);
@@ -18,7 +18,29 @@ test('empty cells retain original name; unsafe and colliding group values remain
   assert.ok(plan.every(x=>!x.path.split('/').includes('..')));
 });
 test('manifest filename cannot overwrite a user attachment', () => {
-  assert.equal(createPlan([row('r','','',['_导出清单.json'])], { ...options, groupFieldId:'', nameFieldId:'' })[0].path, '_导出清单 (2).json');
+  assert.equal(createPlan([row('r','','',['_导出清单.json'])], { ...options, groupFieldId:'', nameFieldIds:[] })[0].path, '_导出清单 (2).json');
+});
+test('multiple name columns follow the selected order and custom separator', () => {
+  const record = { ...row('r', '张三', '计算机学院', ['原材料.pdf']), nameValues: { name: '张三', group: '计算机学院', code: '2026001' } };
+  assert.equal(createPlan([record], { ...options, nameFieldIds: ['code', 'name', 'group'], nameSeparator: ' - ' })[0].path,
+    '计算机学院/2026001 - 张三 - 计算机学院.pdf');
+  assert.equal(createPlan([record], { ...options, nameFieldIds: ['group', 'name'], nameSeparator: '' })[0].path,
+    '计算机学院/计算机学院张三.pdf');
+  assert.equal(createPlan([record], { ...options, nameFieldIds: ['name', 'code'], nameSeparator: ' ', naming: 'prefix' })[0].path,
+    '计算机学院/张三 2026001 原材料.pdf');
+});
+test('empty name cells are skipped, while zero values and original-name fallback remain valid', () => {
+  const records = [
+    { ...row('r1', ' 张三 ', ''), nameValues: { name: ' 张三 ', blank: '  ', code: '0' } },
+    row('r2', '  ', '', ['原材料.pdf']),
+  ];
+  assert.deepEqual(createPlan(records, { ...options, nameFieldIds: ['missing', 'name', 'blank', 'code'], nameSeparator: '-', groupFieldId: '' }).map(item => item.path),
+    ['张三-0.txt', '原材料.pdf']);
+  assert.equal(createPlan([records[0]], { ...options, nameFieldIds: [], groupFieldId: '' })[0].path, '申请.txt');
+});
+test('a custom separator cannot create additional folders or unsafe paths', () => {
+  assert.equal(createPlan([row('r', '张三', '学院')], { ...options, nameFieldIds: ['name', 'group'], nameSeparator: '/\\', groupFieldId: '' })[0].path,
+    '张三__学院.txt');
 });
 test('Unicode length fits common filesystems and matching extensions are not doubled', () => {
   const path = createPlan([row('r','中文'.repeat(200),'A')], options)[0].path;

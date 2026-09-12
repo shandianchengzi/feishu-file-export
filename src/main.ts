@@ -13,7 +13,7 @@ const escape = (value: unknown) => String(value).replace(/[&<>"']/g, c => ({ '&'
 const icon = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 10v7a4 4 0 0 0 8 0V7a3 3 0 0 0-6 0v10a1 1 0 0 0 2 0V8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
 let source: Source;
 let context: Context | undefined;
-let options: Options = { tableId: '', viewId: '', scope: 'view', recordIds: [], attachmentFieldIds: [], nameFieldId: '', groupFieldId: '', naming: 'replace' };
+let options: Options = { tableId: '', viewId: '', scope: 'view', recordIds: [], attachmentFieldIds: [], nameFieldIds: [], nameSeparator: '_', groupFieldId: '', naming: 'replace' };
 let items: ExportItem[] = [];
 let checked = new Set<string>();
 let page = 0;
@@ -42,7 +42,7 @@ function render() {
   const chosen = items.filter(item => checked.has(item.id));
   const totalSize = chosen.reduce((total, item) => total + Math.max(0, item.attachment.size || 0), 0);
   const header = `<header><div class="brand-icon">${icon}</div><div><h1>附件批量导出</h1><p>按单元格命名，按字段分类</p></div><span class="version">v1.0</span></header>`;
-  const help = `<details class="help"><summary>使用说明</summary><p>选择命名列和分类列后，每个附件会使用<strong>同一行</strong>的单元格内容。命名为空时保留原文件名；分类为空时放入“未分类”。</p><p>文件扩展名保留，重名文件自动添加序号。分类中的斜杠等字符会替换为下划线；不同分类清理后重名也会自动区分。多选字段按完整显示文本建立一个文件夹。</p><p>支持当前视图、整张表或手动选择记录，再在预览中勾选具体附件。读取期间请避免编辑源表。大批量附件会拆成多个独立 ZIP，逐包保存；每包附带导出清单。</p><p>请在有附件下载权限的账号下使用。建议使用最新版 Chrome / Edge 的飞书网页版。单个附件不能超过所选单包大小，打包时浏览器需要额外内存。</p><a href="${installUrl}" target="_blank" rel="noopener noreferrer">飞书边栏插件开发指南 ↗</a> · <a href="${projectUrl}" target="_blank" rel="noopener noreferrer">项目与问题反馈 ↗</a></details>`;
+  const help = `<details class="help"><summary>使用说明</summary><p>命名列可多选，按勾选顺序组合<strong>同一行</strong>的单元格内容，也可用上下按钮调整顺序。自定义分隔符用于连接各列内容，在保留原文件名模式下也用于连接原文件名；留空则直接拼接。空单元格自动跳过，全部为空或未选命名列时保留原文件名；分类为空时放入“未分类”。</p><p>文件扩展名保留，重名文件自动添加序号。文件名和分类中的斜杠等字符会替换为下划线；不同分类清理后重名也会自动区分。多选字段按完整显示文本建立一个文件夹。</p><p>支持当前视图、整张表或手动选择记录，再在预览中勾选具体附件。读取期间请避免编辑源表。大批量附件会拆成多个独立 ZIP，逐包保存；每包附带导出清单。</p><p>请在有附件下载权限的账号下使用。建议使用最新版 Chrome / Edge 的飞书网页版。单个附件不能超过所选单包大小，打包时浏览器需要额外内存。</p><a href="${installUrl}" target="_blank" rel="noopener noreferrer">飞书边栏插件开发指南 ↗</a> · <a href="${projectUrl}" target="_blank" rel="noopener noreferrer">项目与问题反馈 ↗</a></details>`;
   if (standalone) {
     root.innerHTML = `<main class="shell">${header}<section class="welcome"><span class="eyebrow">飞书多维表格 · 边栏插件</span><h2>把附件整理好，再下载。</h2><p>将这个地址添加为多维表格的自定义边栏插件，即可读取表格中的附件。</p><div class="url-box"><code>${hostedUrl}</code><button id="copy-url" class="secondary">复制地址</button></div><ol><li>打开需要导出附件的飞书多维表格。</li><li>进入边栏插件的自定义／开发插件入口，填入上面的 HTTPS 地址。</li><li>选择附件列、命名列和分类列，预览后导出。</li></ol><p class="muted">独立打开此页面无法读取飞书表格。入口名称与使用权限以你的飞书界面和开发指南为准。</p><a class="primary button" href="?demo=1">试用示例数据</a><p class="small">示例模式可以下载测试 ZIP，不读取你的飞书数据。</p></section>${help}<footer>附件只在当前浏览器中读取与打包。</footer></main>`;
     document.querySelector('#copy-url')?.addEventListener('click', async event => {
@@ -66,8 +66,12 @@ function render() {
         <div class="label">附件列</div><div class="field-list">${context.fields.filter(field => field.attachment).map(field => `<label class="field-chip"><input type="checkbox" data-field="${escape(field.id)}" ${options.attachmentFieldIds.includes(field.id) ? 'checked' : ''}> ${escape(field.name)}</label>`).join('') || '<p class="muted">这张数据表没有附件列，请切换数据表。</p>'}</div>
       </section>
       <section><div class="section-title"><h2><span>2</span> 设置文件名与分类</h2></div>
-        <label class="label" for="name-field">用哪一列的内容命名？</label><select id="name-field"><option value="">保留原文件名</option>${selectOptions(fields, options.nameFieldId)}</select>
-        ${options.nameFieldId ? `<label class="label" for="naming">命名方式</label><select id="naming"><option value="replace" ${options.naming === 'replace' ? 'selected' : ''}>单元格内容 + 原扩展名</option><option value="prefix" ${options.naming === 'prefix' ? 'selected' : ''}>单元格内容 + 原文件名</option></select>` : ''}
+        <div class="label" id="name-fields-label">用哪些列的内容组合命名？（可多选）</div>
+        <div class="field-list" role="group" aria-labelledby="name-fields-label">${fields.map(field => `<label class="field-chip"><input type="checkbox" data-name-field="${escape(field.id)}" ${options.nameFieldIds.includes(field.id) ? 'checked' : ''}> ${escape(field.name)}</label>`).join('') || '<p class="muted">没有可用于命名的列，将保留原文件名。</p>'}</div>
+        ${options.nameFieldIds.length ? `<div class="label" id="name-order-label">组合顺序</div><ol class="name-order" aria-labelledby="name-order-label">${options.nameFieldIds.map((id, index) => {
+          const name = escape(fields.find(field => field.id === id)?.name || id);
+          return `<li><span class="order-number">${index + 1}</span><span class="order-name">${name}</span><button type="button" class="text-button" data-name-move="${escape(id)}" data-direction="-1" aria-label="将${name}上移" ${index === 0 ? 'disabled' : ''}>↑</button><button type="button" class="text-button" data-name-move="${escape(id)}" data-direction="1" aria-label="将${name}下移" ${index === options.nameFieldIds.length - 1 ? 'disabled' : ''}>↓</button></li>`;
+        }).join('')}</ol><label class="label" for="name-separator">自定义分隔符</label><input type="text" id="name-separator" value="${escape(options.nameSeparator)}" placeholder="例如：_、- 或空格" aria-describedby="separator-hint"><p class="hint" id="separator-hint">留空则直接拼接。空单元格自动跳过；全部为空时保留原文件名。</p><label class="label" for="naming">命名方式</label><select id="naming"><option value="replace" ${options.naming === 'replace' ? 'selected' : ''}>组合内容 + 原扩展名</option><option value="prefix" ${options.naming === 'prefix' ? 'selected' : ''}>组合内容 + 分隔符 + 原文件名</option></select>` : '<p class="hint">未选择命名列，将保留原文件名。</p>'}
         <label class="label" for="group-field">按哪一列分类到文件夹？</label><select id="group-field"><option value="">不分类，放在同一目录</option>${selectOptions(fields, options.groupFieldId)}</select>
         <p class="hint">取附件所在行的单元格内容。重名自动加序号，原扩展名保留。</p>
       </section><button type="button" id="scan" class="primary wide" ${!options.attachmentFieldIds.length ? 'disabled' : ''}>预览附件与导出路径</button>
@@ -99,9 +103,27 @@ function bind() {
   document.querySelector('#table')?.addEventListener('change', event => void connect((event.target as HTMLSelectElement).value));
   change('scope', value => { options.scope = value as Options['scope']; });
   change('view', value => { options.viewId = value; options.recordIds = []; });
-  change('name-field', value => { options.nameFieldId = value; });
   change('group-field', value => { options.groupFieldId = value; });
   change('naming', value => { options.naming = value as Options['naming']; });
+  document.querySelectorAll<HTMLInputElement>('[data-name-field]').forEach(input => input.addEventListener('change', () => {
+    options.nameFieldIds = input.checked ? [...options.nameFieldIds, input.dataset.nameField!] : options.nameFieldIds.filter(id => id !== input.dataset.nameField);
+    invalidate(); render();
+  }));
+  document.querySelectorAll<HTMLButtonElement>('[data-name-move]').forEach(button => button.addEventListener('click', () => {
+    const index = options.nameFieldIds.indexOf(button.dataset.nameMove!);
+    const next = index + Number(button.dataset.direction);
+    if (index < 0 || next < 0 || next >= options.nameFieldIds.length) return;
+    [options.nameFieldIds[index], options.nameFieldIds[next]] = [options.nameFieldIds[next], options.nameFieldIds[index]];
+    invalidate(); render();
+  }));
+  document.querySelector('#name-separator')?.addEventListener('input', event => {
+    options.nameSeparator = (event.target as HTMLInputElement).value;
+    invalidate();
+    // Keep the input and focus intact while typing, including IME composition.
+    document.querySelector('.preview')?.remove();
+    const noticeElement = document.getElementById('notice');
+    if (noticeElement) noticeElement.hidden = true;
+  });
   document.querySelector('#limit')?.addEventListener('change', event => { limitMB = Number((event.target as HTMLSelectElement).value); });
   document.querySelectorAll<HTMLInputElement>('[data-field]').forEach(input => input.addEventListener('change', () => {
     options.attachmentFieldIds = input.checked ? [...options.attachmentFieldIds, input.dataset.field!] : options.attachmentFieldIds.filter(id => id !== input.dataset.field);
@@ -161,9 +183,13 @@ async function connect(tableId?: string) {
         timer = setTimeout(() => reject(new Error('连接超时。请从飞书多维表格边栏内打开本插件，并确认插件已获得授权。')), 20_000);
       })]);
     } finally { clearTimeout(timer); }
+    const nameFields = context.fields.filter(field => !field.attachment);
+    const nameFieldIds = options.tableId === context.tableId
+      ? options.nameFieldIds.filter(id => nameFields.some(field => field.id === id))
+      : nameFields.filter(field => field.primary).map(field => field.id);
     options = { ...options, tableId: context.tableId, viewId: context.viewId, recordIds: [],
       attachmentFieldIds: context.fields.filter(field => field.attachment).map(field => field.id),
-      nameFieldId: context.fields.find(field => field.primary && !field.attachment)?.id || '',
+      nameFieldIds,
       groupFieldId: demo ? 'group' : '' };
     invalidate();
   } catch (error) { context = undefined; announce(describeError(error), true); }

@@ -28,6 +28,12 @@ export function feishuSource(): Source {
           throw new Error('附件列已被删除或更改类型，请刷新字段。');
         }
       }
+      const textFieldIds = [...new Set([...options.nameFieldIds, options.groupFieldId].filter(Boolean))];
+      for (const fieldId of textFieldIds) {
+        if (!fields.some(field => field.id === fieldId && field.type !== FieldType.Attachment)) {
+          throw new Error('命名列或分类列已被删除或更改类型，请刷新字段后重新选择。');
+        }
+      }
       let records: IRecord[];
       if (options.scope === 'picked') {
         if (!options.recordIds.length) throw new Error('请先选择需要导出的记录。');
@@ -55,15 +61,13 @@ export function feishuSource(): Source {
           }
           return { fieldId, fieldName: fields.find(field => field.id === fieldId)!.name, attachments: (value || []) as Attachment[] };
         });
-        let name = '', group = '';
+        let nameValues: Record<string, string> = {};
         if (cells.some(cell => cell.attachments.length)) {
-          [name, group] = await Promise.all([
-            options.nameFieldId ? table.getCellString(options.nameFieldId, record.recordId) : '',
-            options.groupFieldId ? table.getCellString(options.groupFieldId, record.recordId) : '',
-          ]);
+          nameValues = Object.fromEntries(await mapLimited(textFieldIds, 3, async fieldId =>
+            [fieldId, (await table.getCellString(fieldId, record.recordId)) || ''], signal));
         }
         progress(++count);
-        return { id: record.recordId, cells, name: name || '', group: group || '' };
+        return { id: record.recordId, cells, nameValues, group: nameValues[options.groupFieldId] || '' };
       }, signal);
     },
     async url(item) {

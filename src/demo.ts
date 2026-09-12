@@ -1,11 +1,11 @@
-import type { Attachment, Context, Row, Source } from './types.ts';
+import type { Attachment, Context, Source } from './types.ts';
 const contents = new Map<string, string>();
 function file(name: string, content: string): Attachment {
   const token = 'demo-' + contents.size;
   contents.set(token, content);
   return { name, token, size: new TextEncoder().encode(content).length, type: 'text/plain' };
 }
-const demoRows: Row[] = [
+const demoRows = [
   { id: 'demo-1', name: '张三', group: '计算机学院', cells: [{ fieldId: 'attachments', fieldName: '申请材料', attachments: [file('申请书.txt', '这是张三的演示申请书。\n'), file('补充材料.txt', '这是张三的补充材料。\n')] }] },
   { id: 'demo-2', name: '李四', group: '计算机学院', cells: [{ fieldId: 'attachments', fieldName: '申请材料', attachments: [file('申请书.txt', '这是李四的演示申请书。\n')] }] },
   { id: 'demo-3', name: '王五', group: '自动化学院', cells: [{ fieldId: 'attachments', fieldName: '申请材料', attachments: [file('申请书.txt', '这是王五的演示申请书。\n')] }] },
@@ -22,7 +22,7 @@ export function demoSource(): Source {
       signal.throwIfAborted();
       const rows = options.scope === 'picked' ? demoRows.filter(row => options.recordIds.includes(row.id)) : demoRows;
       progress(rows.length);
-      return rows.map(row => ({ ...row, name: options.nameFieldId === 'group' ? row.group : row.name,
+      return rows.map(row => ({ id: row.id, nameValues: { name: row.name, group: row.group },
         group: options.groupFieldId === 'name' ? row.name : row.group,
         cells: row.cells.filter(cell => options.attachmentFieldIds.includes(cell.fieldId)) }));
     },

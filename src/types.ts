@@ -7,13 +7,13 @@ export interface Context {
 }
 export interface Attachment { name: string; size: number; type: string; token: string }
 export interface Row {
-  id: string; name: string; group: string;
+  id: string; nameValues: Record<string, string>; group: string;
   cells: { fieldId: string; fieldName: string; attachments: Attachment[] }[];
 }
 export interface Options {
   tableId: string; viewId: string; scope: 'view' | 'all' | 'picked';
   recordIds: string[]; attachmentFieldIds: string[];
-  nameFieldId: string; groupFieldId: string; naming: 'replace' | 'prefix';
+  nameFieldIds: string[]; nameSeparator: string; groupFieldId: string; naming: 'replace' | 'prefix';
 }
 export interface ExportItem {
   id: string; recordId: string; fieldId: string; fieldName: string;

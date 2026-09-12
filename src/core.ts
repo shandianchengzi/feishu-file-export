@@ -29,12 +29,14 @@ function safeFilename(name: string): string {
   return safeSegment(stem, '未命名', 180 - encoder.encode(safeExt).length) + safeExt;
 }
 
-export function createPlan(rows: Row[], options: Pick<Options, 'nameFieldId' | 'groupFieldId' | 'naming'>): ExportItem[] {
+export function createPlan(rows: Row[], options: Pick<Options, 'nameFieldIds' | 'nameSeparator' | 'groupFieldId' | 'naming'>): ExportItem[] {
   const groups = new Map<string, string>();
   const usedGroups = new Set<string>(['_导出清单.json']);
   const usedPaths = new Set<string>(['_导出清单.json']);
   const items: ExportItem[] = [];
   for (const row of rows) {
+    const combinedName = options.nameFieldIds.map(id => (row.nameValues[id] || '').trim())
+      .filter(Boolean).join(options.nameSeparator);
     let folder = '';
     if (options.groupFieldId) {
       const key = row.group.normalize('NFC').trim() || '未分类';
@@ -52,12 +54,12 @@ export function createPlan(rows: Row[], options: Pick<Options, 'nameFieldId' | '
       const original = safeFilename(attachment.name || '未命名');
       const [, ext] = splitName(original);
       let name = original;
-      if (options.nameFieldId && row.name.trim()) {
-        let base = row.name.trim();
+      if (combinedName) {
+        let base = combinedName;
         if (options.naming === 'replace') {
           if (ext && base.toLowerCase().endsWith(ext.toLowerCase())) base = base.slice(0, -ext.length);
           name = safeFilename(base + ext);
-        } else name = safeFilename(base + '_' + original);
+        } else name = safeFilename(base + options.nameSeparator + original);
       }
       const [stem, suffix] = splitName(name);
       let candidate = folder + name;
