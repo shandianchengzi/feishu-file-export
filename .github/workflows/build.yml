@@ -28,6 +28,16 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm test
       - run: npm run build
+      - name: Mirror built Pages site to Cloudflare
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        uses: shandianchengzi/skill/manage-github-pages/cloudflare-backup@4c1bf8604fc78dabb0babc83bfa0e2c1fa645327
+        with:
+          directory: dist
+          project: sdz-feishu-file-export
+          site-prefix: feishu-file-export
+          cloudflare-api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          cloudflare-account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: feishu-file-export-dist
